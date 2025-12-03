@@ -17,7 +17,8 @@ import {
   Lock,
   Unlock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Home
 } from 'lucide-react';
 
 interface Recipe {
@@ -75,6 +76,7 @@ export default function AdminPage() {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   
   // Form states
@@ -104,6 +106,12 @@ export default function AdminPage() {
     description: '',
     type: 'feature',
     published: false
+  });
+
+  const [userForm, setUserForm] = useState({
+    is_premium: false,
+    is_admin: false,
+    is_active: true
   });
 
   useEffect(() => {
@@ -334,6 +342,53 @@ export default function AdminPage() {
     loadUsers();
   };
 
+  const handleEditUser = (user: User) => {
+    setEditingItem(user);
+    setUserForm({
+      is_premium: user.is_premium,
+      is_admin: user.is_admin,
+      is_active: user.is_active
+    });
+    setShowUserModal(true);
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      if (!editingItem) return;
+
+      // Atualizar profile
+      await supabase
+        .from('profiles')
+        .update({
+          is_premium: userForm.is_premium,
+          is_active: userForm.is_active
+        })
+        .eq('id', editingItem.id);
+
+      // Gerenciar status de admin
+      if (userForm.is_admin && !editingItem.is_admin) {
+        // Adicionar como admin
+        await supabase
+          .from('admin_users')
+          .insert([{ user_id: editingItem.id }]);
+      } else if (!userForm.is_admin && editingItem.is_admin) {
+        // Remover como admin
+        await supabase
+          .from('admin_users')
+          .delete()
+          .eq('user_id', editingItem.id);
+      }
+
+      setShowUserModal(false);
+      setEditingItem(null);
+      setUserForm({ is_premium: false, is_admin: false, is_active: true });
+      loadUsers();
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      alert('Erro ao salvar usuário!');
+    }
+  };
+
   // CRUD Atualizações
   const handleSaveUpdate = async () => {
     try {
@@ -372,6 +427,17 @@ export default function AdminPage() {
     loadUpdates();
   };
 
+  const handleEditUpdate = (update: ContentUpdate) => {
+    setEditingItem(update);
+    setUpdateForm({
+      title: update.title,
+      description: update.description,
+      type: update.type,
+      published: update.published
+    });
+    setShowUpdateModal(true);
+  };
+
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
     await supabase
       .from('content_updates')
@@ -398,11 +464,22 @@ export default function AdminPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#00FF7F] to-[#00CC66] py-8 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Crown className="w-8 h-8 text-[#0D0D0D]" />
-            <h1 className="text-3xl font-bold text-[#0D0D0D]">Painel Administrativo</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Crown className="w-8 h-8 text-[#0D0D0D]" />
+                <h1 className="text-3xl font-bold text-[#0D0D0D]">Painel Administrativo</h1>
+              </div>
+              <p className="text-[#0D0D0D]/80 text-sm">Gerencie todo o conteúdo da plataforma</p>
+            </div>
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 px-6 py-3 bg-[#0D0D0D] text-[#00FF7F] rounded-xl font-bold hover:bg-[#1A1A1A] transition-all"
+            >
+              <Home className="w-5 h-5" />
+              Voltar ao Menu
+            </button>
           </div>
-          <p className="text-[#0D0D0D]/80 text-sm">Gerencie todo o conteúdo da plataforma</p>
         </div>
       </div>
 
@@ -617,16 +694,24 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleToggleUserStatus(user.id, user.is_active)}
-                            className={`p-2 rounded-lg transition-all ${
-                              user.is_active
-                                ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
-                                : 'bg-[#00FF7F]/20 text-[#00FF7F] hover:bg-[#00FF7F]/30'
-                            }`}
-                          >
-                            {user.is_active ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="p-2 bg-[#252525] text-[#00FF7F] rounded-lg hover:bg-[#2A2A2A] transition-all"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserStatus(user.id, user.is_active)}
+                              className={`p-2 rounded-lg transition-all ${
+                                user.is_active
+                                  ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
+                                  : 'bg-[#00FF7F]/20 text-[#00FF7F] hover:bg-[#00FF7F]/30'
+                              }`}
+                            >
+                              {user.is_active ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -682,6 +767,12 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditUpdate(update)}
+                        className="p-2 bg-[#252525] text-[#00FF7F] rounded-lg hover:bg-[#2A2A2A] transition-all"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
                       <button
                         onClick={() => handleTogglePublish(update.id, update.published)}
                         className={`p-2 rounded-lg transition-all ${
@@ -934,6 +1025,95 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={handleSaveCategory}
+                  className="flex-1 px-6 py-3 bg-[#00FF7F] text-[#0D0D0D] rounded-xl font-bold hover:bg-[#00CC66] transition-all flex items-center justify-center gap-2"
+                >
+                  <Save className="w-5 h-5" />
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Usuário */}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1A1A1A] rounded-2xl max-w-md w-full">
+            <div className="border-b border-[#252525] p-6 flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-white">Editar Usuário</h3>
+              <button
+                onClick={() => setShowUserModal(false)}
+                className="p-2 hover:bg-[#252525] rounded-lg transition-all"
+              >
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-[#252525] rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-1">Email</p>
+                <p className="text-white font-semibold">{editingItem?.email}</p>
+              </div>
+
+              <div className="bg-[#252525] rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-1">Nome</p>
+                <p className="text-white font-semibold">{editingItem?.full_name || '-'}</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-4 bg-[#252525] rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="user_premium"
+                    checked={userForm.is_premium}
+                    onChange={(e) => setUserForm({ ...userForm, is_premium: e.target.checked })}
+                    className="w-5 h-5 rounded border-[#2A2A2A] text-[#FFD700] focus:ring-[#FFD700]"
+                  />
+                  <label htmlFor="user_premium" className="text-white font-semibold flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-[#FFD700]" />
+                    Usuário Premium
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-[#252525] rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="user_admin"
+                    checked={userForm.is_admin}
+                    onChange={(e) => setUserForm({ ...userForm, is_admin: e.target.checked })}
+                    className="w-5 h-5 rounded border-[#2A2A2A] text-[#00FF7F] focus:ring-[#00FF7F]"
+                  />
+                  <label htmlFor="user_admin" className="text-white font-semibold flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-[#00FF7F]" />
+                    Administrador
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-[#252525] rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="user_active"
+                    checked={userForm.is_active}
+                    onChange={(e) => setUserForm({ ...userForm, is_active: e.target.checked })}
+                    className="w-5 h-5 rounded border-[#2A2A2A] text-[#00FF7F] focus:ring-[#00FF7F]"
+                  />
+                  <label htmlFor="user_active" className="text-white font-semibold flex items-center gap-2">
+                    <Unlock className="w-5 h-5 text-[#00FF7F]" />
+                    Conta Ativa
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowUserModal(false)}
+                  className="flex-1 px-6 py-3 bg-[#252525] text-white rounded-xl font-bold hover:bg-[#2A2A2A] transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveUser}
                   className="flex-1 px-6 py-3 bg-[#00FF7F] text-[#0D0D0D] rounded-xl font-bold hover:bg-[#00CC66] transition-all flex items-center justify-center gap-2"
                 >
                   <Save className="w-5 h-5" />

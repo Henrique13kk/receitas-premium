@@ -4,13 +4,25 @@ import { Home, Search, Heart, User, Crown, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('home');
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Determinar aba ativa baseado na URL atual
+  const getActiveTab = () => {
+    if (pathname === '/') return 'home';
+    if (pathname === '/buscar') return 'search';
+    if (pathname === '/admin') return 'admin';
+    if (pathname === '/favoritos') return 'favorites';
+    if (pathname === '/perfil') return 'profile';
+    return 'home';
+  };
+
+  const activeTab = getActiveTab();
 
   useEffect(() => {
     loadUserData();
@@ -50,7 +62,7 @@ export default function Navbar() {
     if (!user) {
       router.push('/login');
     } else {
-      setActiveTab('profile');
+      router.push('/perfil');
     }
   };
 
@@ -106,7 +118,6 @@ export default function Navbar() {
             {/* Home */}
             <Link
               href="/"
-              onClick={() => setActiveTab('home')}
               className="flex flex-col items-center gap-1 group relative"
             >
               <div className={`p-3 rounded-2xl transition-all duration-300 ${
@@ -131,7 +142,6 @@ export default function Navbar() {
             {/* Search */}
             <Link
               href="/buscar"
-              onClick={() => setActiveTab('search')}
               className="flex flex-col items-center gap-1 group relative"
             >
               <div className={`p-3 rounded-2xl transition-all duration-300 ${
@@ -157,7 +167,6 @@ export default function Navbar() {
             {isAdmin && (
               <Link
                 href="/admin"
-                onClick={() => setActiveTab('admin')}
                 className="flex flex-col items-center gap-1 group relative"
               >
                 <div className={`p-3 rounded-2xl transition-all duration-300 ${
@@ -181,8 +190,8 @@ export default function Navbar() {
             )}
 
             {/* Favorites */}
-            <button
-              onClick={() => setActiveTab('favorites')}
+            <Link
+              href="/favoritos"
               className="flex flex-col items-center gap-1 group relative"
             >
               <div className={`p-3 rounded-2xl transition-all duration-300 ${
@@ -202,7 +211,7 @@ export default function Navbar() {
               {activeTab === 'favorites' && (
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#00FF7F] rounded-full animate-pulse" />
               )}
-            </button>
+            </Link>
 
             {/* Profile */}
             <button
